@@ -69,6 +69,60 @@ module Elasticsearch
             assert_equal 1, response['aggregations']['clicks']['buckets']['low']['doc_count']
             assert_equal 'one', response['aggregations']['clicks']['buckets']['low']['tags']['buckets'][0]['key']
           end
+
+          should "define multiple aggregations" do
+            response = @client.search index: 'test', body: search {
+              aggregation :clicks do
+                range field: 'clicks' do
+                  key :low, to: 10
+                  key :mid, from: 10, to: 20
+
+                  aggregation :tags do
+                    terms field: 'tags'
+                  end
+                end
+              end
+
+              aggregation :min_clicks do
+                min field: 'clicks'
+              end
+
+              aggregation :max_clicks do
+                max field: 'clicks'
+              end
+
+              aggregation :sum_clicks do
+                sum field: 'clicks'
+              end
+
+              aggregation :avg_clicks do
+                avg field: 'clicks'
+              end
+            }.to_hash
+
+            assert_equal 2, response['aggregations']['clicks']['buckets'].size
+            assert_equal 1, response['aggregations']['clicks']['buckets']['low']['doc_count']
+            assert_equal 'one', response['aggregations']['clicks']['buckets']['low']['tags']['buckets'][0]['key']
+
+            assert_equal 5,  response['aggregations']['min_clicks']['value']
+            assert_equal 20, response['aggregations']['max_clicks']['value']
+            assert_equal 40, response['aggregations']['sum_clicks']['value']
+            assert_equal 13, response['aggregations']['avg_clicks']['value'].to_i
+          end
+
+          should "return statistics on clicks" do
+            response = @client.search index: 'test', body: search {
+              aggregation :stats_clicks do
+                stats field: 'clicks'
+              end
+            }.to_hash
+
+            assert_equal 3,  response['aggregations']['stats_clicks']['count']
+            assert_equal 5,  response['aggregations']['stats_clicks']['min']
+            assert_equal 20, response['aggregations']['stats_clicks']['max']
+            assert_equal 40, response['aggregations']['stats_clicks']['sum']
+            assert_equal 13, response['aggregations']['stats_clicks']['avg'].to_i
+          end
         end
 
       end
